@@ -75,15 +75,23 @@ install_nvidia() {
     echo "NVIDIA graphics installation complete."
 }
 
+# Function to install Brave browser
+install_brave() {
+    echo "Starting Brave browser installation..."
+    curl -fsS https://dl.brave.com/install.sh | sh
+    echo "Brave browser installation complete."
+}
+
 # Main script execution
 echo "Select an operation:"
 echo "1. Install system packages"
 echo "2. Remove system packages"
 echo "3. Install Flatpak packages"
 echo "4. Install NVIDIA graphics drivers"
-echo "5. Exit"
+echo "5. Install Brave browser"
+echo "6. Exit"
 
-read -p "Enter your choice (1-5): " CHOICE
+read -p "Enter your choice (1-6): " CHOICE
 
 case $CHOICE in
     1)
@@ -99,6 +107,9 @@ case $CHOICE in
         install_nvidia
         ;;
     5)
+        install_brave
+        ;;
+    6)
         echo "Exiting script. Goodbye!"
         ;;
     *)
