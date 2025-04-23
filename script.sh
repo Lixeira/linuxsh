@@ -2,6 +2,12 @@
 
 set -e
 
+# Check if Flatpak is installed
+if ! command -v flatpak &> /dev/null; then
+    echo "Flatpak is not installed. Please install Flatpak first."
+    exit 1
+fi
+
 # Demo packages
 INSTALL_PACKAGES=("htop" "git" "curl" "decibels" "gnome.papers")
 REMOVE_PACKAGES=(
@@ -47,14 +53,37 @@ install_flatpaks() {
     echo "Flatpak installation complete."
 }
 
+# Function to install NVIDIA Graphics drivers
+install_nvidia() {
+    echo "Starting NVIDIA graphics installation..."
+    
+    # Install required packages
+    sudo dnf install -y kmodtool akmods mokutil openssl
+
+    # Generate and import MOK (Machine Owner Key) for Secure Boot (if enabled)
+    sudo kmodgenca -a
+    echo "Please enter your password to proceed with MOK enrollment..."
+    sudo mokutil --import /etc/pki/akmods/certs/public_key.der
+
+    # Install NVIDIA drivers and CUDA
+    sudo dnf install -y akmod-nvidia
+    sudo dnf install -y xorg-x11-drv-nvidia-cuda
+
+    # Confirm NVIDIA driver version
+    echo "NVIDIA driver installation complete. Verifying version..."
+    modinfo -F version nvidia
+    echo "NVIDIA graphics installation complete."
+}
+
 # Main script execution
 echo "Select an operation:"
 echo "1. Install system packages"
 echo "2. Remove system packages"
 echo "3. Install Flatpak packages"
-echo "4. Exit"
+echo "4. Install NVIDIA graphics drivers"
+echo "5. Exit"
 
-read -p "Enter your choice (1-4): " CHOICE
+read -p "Enter your choice (1-5): " CHOICE
 
 case $CHOICE in
     1)
@@ -67,6 +96,9 @@ case $CHOICE in
         install_flatpaks
         ;;
     4)
+        install_nvidia
+        ;;
+    5)
         echo "Exiting script. Goodbye!"
         ;;
     *)
