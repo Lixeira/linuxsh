@@ -8,7 +8,7 @@ if ! command -v flatpak &> /dev/null; then
     exit 1
 fi
 
-# Demo packages
+# system package names
 INSTALL_PACKAGES=("htop" "git" "curl" "decibels" "gnome.papers")
 REMOVE_PACKAGES=(
     "firefox" "baobab" "evince" "epiphany"
