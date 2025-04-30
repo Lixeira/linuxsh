@@ -1,15 +1,44 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
-# Check if Flatpak is installed
-if ! command -v flatpak &> /dev/null; then
-    echo "Flatpak is not installed. Please install Flatpak first."
+# Color definitions for better output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Check if running as root
+if [[ $EUID -eq 0 ]]; then
+    echo -e "${RED}Error: This script should not be run as root.${NC}"
     exit 1
 fi
 
-# system package names
-INSTALL_PACKAGES=("htop" "git" "curl" "decibels" "gnome.papers")
+# Check if sudo is available
+if ! command -v sudo &> /dev/null; then
+    echo -e "${RED}Error: sudo is not installed. Please install sudo first.${NC}"
+    exit 1
+fi
+
+# Check if Flatpak is installed
+if ! command -v flatpak &> /dev/null; then
+    echo -e "${YELLOW}Flatpak is not installed. Would you like to install it? (y/n)${NC}"
+    read -r answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+        sudo dnf install -y flatpak || {
+            echo -e "${RED}Failed to install Flatpak.${NC}"
+            exit 1
+        }
+        flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    else
+        echo -e "${RED}Flatpak is required for some operations. Exiting.${NC}"
+        exit 1
+    fi
+fi
+
+# Package lists
+INSTALL_PACKAGES=("git" "curl" "decibels" "gnome.papers")
 REMOVE_PACKAGES=(
     "firefox" "baobab" "evince" "epiphany"
     "gnome-calendar" "gnome-clocks" "gnome-color-manager"
@@ -20,99 +49,204 @@ REMOVE_PACKAGES=(
     "malcontent" "orca" "simple-scan" "yelp"
     "gnome.snapshot"
 )
+FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager")
 
-FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager" "com.obsproject.Studio")
+# Function to print header
+print_header() {
+    echo -e "${BLUE}\n=== $1 ===${NC}"
+}
 
 # Function to install system packages
 install_packages() {
-    echo "Starting installation of packages..."
+    print_header "INSTALLING SYSTEM PACKAGES"
+    local failed=0
     for PACKAGE in "${INSTALL_PACKAGES[@]}"; do
-        echo "Installing $PACKAGE..."
-        sudo dnf install -y "$PACKAGE" || echo "Failed to install $PACKAGE"
+        echo -e "${YELLOW}Installing $PACKAGE...${NC}"
+        if sudo dnf install -y "$PACKAGE"; then
+            echo -e "${GREEN}Successfully installed $PACKAGE${NC}"
+        else
+            echo -e "${RED}Failed to install $PACKAGE${NC}"
+            ((failed++))
+        fi
     done
-    echo "Installation complete."
+    
+    if [[ $failed -gt 0 ]]; then
+        echo -e "${RED}Failed to install $failed package(s).${NC}"
+        return 1
+    else
+        echo -e "${GREEN}All packages installed successfully.${NC}"
+    fi
 }
 
 # Function to remove system packages
 remove_packages() {
-    echo "Starting removal of packages..."
+    print_header "REMOVING SYSTEM PACKAGES"
+    echo -e "${YELLOW}The following packages will be removed:${NC}"
+    printf '%s\n' "${REMOVE_PACKAGES[@]}"
+    
+    echo -e "\n${YELLOW}Are you sure you want to continue? (y/n)${NC}"
+    read -r answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}Package removal cancelled.${NC}"
+        return
+    fi
+    
+    local failed=0
     for PACKAGE in "${REMOVE_PACKAGES[@]}"; do
-        echo "Removing $PACKAGE..."
-        sudo dnf remove -y "$PACKAGE" || echo "Failed to remove $PACKAGE"
+        echo -e "${YELLOW}Removing $PACKAGE...${NC}"
+        if sudo dnf remove -y "$PACKAGE"; then
+            echo -e "${GREEN}Successfully removed $PACKAGE${NC}"
+        else
+            echo -e "${RED}Failed to remove $PACKAGE${NC}"
+            ((failed++))
+        fi
     done
-    echo "Removal complete."
+    
+    # Clean up unused dependencies
+    echo -e "${YELLOW}Cleaning up unused dependencies...${NC}"
+    sudo dnf autoremove -y
+    
+    if [[ $failed -gt 0 ]]; then
+        echo -e "${RED}Failed to remove $failed package(s).${NC}"
+        return 1
+    else
+        echo -e "${GREEN}Package removal complete.${NC}"
+    fi
 }
 
 # Function to install Flatpak applications
 install_flatpaks() {
-    echo "Starting installation of Flatpak packages..."
+    print_header "INSTALLING FLATPAK PACKAGES"
+    local failed=0
     for PACKAGE in "${FLATPAK_PACKAGES[@]}"; do
-        echo "Installing Flatpak package: $PACKAGE..."
-        flatpak install -y flathub "$PACKAGE" || echo "Failed to install Flatpak package $PACKAGE"
+        echo -e "${YELLOW}Installing Flatpak package: $PACKAGE...${NC}"
+        if flatpak install -y flathub "$PACKAGE"; then
+            echo -e "${GREEN}Successfully installed $PACKAGE${NC}"
+        else
+            echo -e "${RED}Failed to install Flatpak package $PACKAGE${NC}"
+            ((failed++))
+        fi
     done
-    echo "Flatpak installation complete."
+    
+    if [[ $failed -gt 0 ]]; then
+        echo -e "${RED}Failed to install $failed Flatpak package(s).${NC}"
+        return 1
+    else
+        echo -e "${GREEN}Flatpak installation complete.${NC}"
+    fi
 }
 
 # Function to install NVIDIA Graphics drivers
 install_nvidia() {
-    echo "Starting NVIDIA graphics installation..."
+    print_header "INSTALLING NVIDIA GRAPHICS DRIVERS"
+    
+    echo -e "${YELLOW}This will install NVIDIA drivers and related packages.${NC}"
+    echo -e "${YELLOW}Are you sure you have an NVIDIA GPU? (y/n)${NC}"
+    read -r answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}NVIDIA driver installation cancelled.${NC}"
+        return
+    fi
     
     # Install required packages
-    sudo dnf install -y kmodtool akmods mokutil openssl
-
-    # Generate and import MOK (Machine Owner Key) for Secure Boot (if enabled)
-    sudo kmodgenca -a
-    echo "Please enter your password to proceed with MOK enrollment..."
-    sudo mokutil --import /etc/pki/akmods/certs/public_key.der
-
+    echo -e "${YELLOW}Installing required dependencies...${NC}"
+    sudo dnf install -y kmodtool akmods mokutil openssl || {
+        echo -e "${RED}Failed to install required dependencies.${NC}"
+        return 1
+    }
+    
+    # Generate and import MOK (Machine Owner Key) for Secure Boot
+    echo -e "${YELLOW}Generating and importing MOK for Secure Boot...${NC}"
+    sudo kmodgenca -a || {
+        echo -e "${RED}Failed to generate MOK.${NC}"
+        return 1
+    }
+    
+    echo -e "${YELLOW}Please enter your password to proceed with MOK enrollment...${NC}"
+    sudo mokutil --import /etc/pki/akmods/certs/public_key.der || {
+        echo -e "${RED}Failed to import MOK.${NC}"
+        return 1
+    }
+    
     # Install NVIDIA drivers and CUDA
-    sudo dnf install -y akmod-nvidia
-    sudo dnf install -y xorg-x11-drv-nvidia-cuda
-
+    echo -e "${YELLOW}Installing NVIDIA drivers...${NC}"
+    sudo dnf install -y akmod-nvidia || {
+        echo -e "${RED}Failed to install NVIDIA drivers.${NC}"
+        return 1
+    }
+    
+    echo -e "${YELLOW}Installing CUDA support...${NC}"
+    sudo dnf install -y xorg-x11-drv-nvidia-cuda || {
+        echo -e "${RED}Failed to install CUDA support.${NC}"
+        return 1
+    }
+    
     # Confirm NVIDIA driver version
-    echo "NVIDIA driver installation complete. Verifying version..."
-    modinfo -F version nvidia
-    echo "NVIDIA graphics installation complete."
+    echo -e "${YELLOW}Verifying installation...${NC}"
+    if modinfo -F version nvidia; then
+        echo -e "${GREEN}NVIDIA graphics installation complete.${NC}"
+        echo -e "${YELLOW}You may need to reboot for changes to take effect.${NC}"
+    else
+        echo -e "${RED}Failed to verify NVIDIA driver installation.${NC}"
+        return 1
+    fi
 }
 
 # Function to install Brave browser
 install_brave() {
-    echo "Starting Brave browser installation..."
-    curl -fsS https://dl.brave.com/install.sh | sh
-    echo "Brave browser installation complete."
+    print_header "INSTALLING BRAVE BROWSER"
+    
+    echo -e "${YELLOW}This will install Brave browser from their official repository.${NC}"
+    echo -e "${YELLOW}Do you want to continue? (y/n)${NC}"
+    read -r answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}Brave installation cancelled.${NC}"
+        return
+    fi
+    
+    echo -e "${YELLOW}Installing Brave browser...${NC}"
+    if curl -fsS https://dl.brave.com/install.sh | sh; then
+        echo -e "${GREEN}Brave browser installation complete.${NC}"
+    else
+        echo -e "${RED}Failed to install Brave browser.${NC}"
+        return 1
+    fi
 }
 
-# Main script execution
-echo "Select an operation:"
-echo "1. Install system packages"
-echo "2. Remove system packages"
-echo "3. Install Flatpak packages"
-echo "4. Install NVIDIA graphics drivers"
-echo "5. Install Brave browser"
-echo "6. Exit"
+# Main menu function
+main_menu() {
+    while true; do
+        echo -e "${BLUE}\n=== MAIN MENU ===${NC}"
+        echo "1. Install system packages"
+        echo "2. Remove system packages"
+        echo "3. Install Flatpak packages"
+        echo "4. Install NVIDIA graphics drivers"
+        echo "5. Install Brave browser"
+        echo "6. Exit"
+        
+        read -rp "Enter your choice (1-6): " CHOICE
+        
+        case $CHOICE in
+            1) install_packages ;;
+            2) remove_packages ;;
+            3) install_flatpaks ;;
+            4) install_nvidia ;;
+            5) install_brave ;;
+            6)
+                echo -e "${GREEN}Exiting script. Goodbye!${NC}"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Invalid choice. Please try again.${NC}"
+                ;;
+        esac
+        
+        read -rp "Press Enter to continue..."
+    done
+}
 
-read -p "Enter your choice (1-6): " CHOICE
-
-case $CHOICE in
-    1)
-        install_packages
-        ;;
-    2)
-        remove_packages
-        ;;
-    3)
-        install_flatpaks
-        ;;
-    4)
-        install_nvidia
-        ;;
-    5)
-        install_brave
-        ;;
-    6)
-        echo "Exiting script. Goodbye!"
-        ;;
-    *)
-        echo "Invalid choice. Exiting."
-        ;;
-esac
+# Check if we're being sourced or run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    # Run the main menu
+    main_menu
+fi
