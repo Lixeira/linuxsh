@@ -48,7 +48,7 @@ REMOVE_PACKAGES=(
     "gnome-user-docs" "gnome-user-share" "yelp""gnome.snapshot"
     "malcontent" "orca" "simple-scan" 
     "kontact" "Akregator" "mediawriter"
-    "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
+    "libreoffice-core" "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
     "kmahjongg" "kmines" "kpat" "kolourpaint"
     "skanpage" "khelpcenter" "plasma-welcome"
     "kdebugsettings" "kde-connect" "kmail" "krfb"
@@ -56,6 +56,7 @@ REMOVE_PACKAGES=(
     "kamoso" "qrca" "korganizer" "kde-partitionmanager"
     "kjournald" "im-chooser" "kmouth" "kcharselect"
     "filelight" "kfind" "kgpg" "plasma-drkonqi"
+    "setroubleshoot" "podman"
 )
 FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager")
 
