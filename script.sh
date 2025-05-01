@@ -38,16 +38,24 @@ if ! command -v flatpak &> /dev/null; then
 fi
 
 # Package lists
-INSTALL_PACKAGES=("git" "curl" "decibels" "gnome.papers")
+INSTALL_PACKAGES=("git" "curl")
 REMOVE_PACKAGES=(
-    "firefox" "baobab" "evince" "epiphany"
+    "firefox" "baobab" "evince" "epiphany" "gnome-abrt"
     "gnome-calendar" "gnome-clocks" "gnome-color-manager"
     "gnome-connections" "gnome-console" "gnome-contacts"
-    "gnome-logs" "gnome-maps" "gnome-music"
+    "gnome-logs" "gnome-maps" "gnome-music" "gnome-tour"
     "gnome-remote-desktop" "gnome-shell-extensions"
-    "gnome-tour" "gnome-user-docs" "gnome-user-share"
-    "malcontent" "orca" "simple-scan" "yelp"
-    "gnome.snapshot"
+    "gnome-user-docs" "gnome-user-share" "yelp""gnome.snapshot"
+    "malcontent" "orca" "simple-scan" 
+    "kontact" "Akregator" "mediawriter"
+    "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
+    "kmahjongg" "kmines" "kpat" "kolourpaint"
+    "skanpage" "khelpcenter" "plasma-welcome"
+    "kdebugsettings" "kde-connect" "kmail" "krfb"
+    "krdc" "neochat" "dragon" "elisa-player" "kaddressbook"
+    "kamoso" "qrca" "korganizer" "kde-partitionmanager"
+    "kjournald" "im-chooser" "kmouth" "kcharselect"
+    "filelight" "kfind" "kgpg" "plasma-drkonqi"
 )
 FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager")
 
