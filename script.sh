@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -eo pipefail
-
 # Color definitions for better output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,13 +38,14 @@ fi
 # Package lists
 INSTALL_PACKAGES=("git" "curl")
 REMOVE_PACKAGES=(
-    "firefox" "baobab" "evince" "epiphany" "gnome-abrt"
-    "gnome-calendar" "gnome-clocks" "gnome-color-manager"
+    "firefox" "baobab" "evince" "epiphany" "gnome-abrt" "ibus-anthy"
+    "gnome-calendar" "gnome-clocks" "gnome-color-manager" "ibus-hangul"
     "gnome-connections" "gnome-console" "gnome-contacts"
+    "ibus-typing-booster" "ibus-libpinyin" "gnome-weather"
     "gnome-logs" "gnome-maps" "gnome-music" "gnome-tour"
-    "gnome-remote-desktop" "gnome-shell-extensions"
-    "gnome-user-docs" "gnome-user-share" "yelp""gnome.snapshot"
-    "malcontent" "orca" "simple-scan" 
+    "gnome-remote-desktop" "gnome-shell-extensions" "totem"
+    "gnome-user-docs" "gnome-user-share" "yelp" "snapshot"
+    "malcontent" "orca" "simple-scan" "rhythmbox" "gnome-boxes"
     "kontact" "Akregator" "mediawriter"
     "libreoffice-core" "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
     "kmahjongg" "kmines" "kpat" "kolourpaint"
@@ -65,26 +64,36 @@ print_header() {
     echo -e "${BLUE}\n=== $1 ===${NC}"
 }
 
+# Function to print failed operations summary
+print_failed_summary() {
+    local operation="$1"
+    local -n failed_items=$2
+    
+    if [[ ${#failed_items[@]} -gt 0 ]]; then
+        echo -e "${YELLOW}\nFailed to $operation the following packages:${NC}"
+        printf '%s\n' "${failed_items[@]}"
+    else
+        echo -e "${GREEN}\nAll packages were successfully ${operation}ed.${NC}"
+    fi
+}
+
 # Function to install system packages
 install_packages() {
     print_header "INSTALLING SYSTEM PACKAGES"
-    local failed=0
+    local failed_installs=()
+    
     for PACKAGE in "${INSTALL_PACKAGES[@]}"; do
         echo -e "${YELLOW}Installing $PACKAGE...${NC}"
         if sudo dnf install -y "$PACKAGE"; then
             echo -e "${GREEN}Successfully installed $PACKAGE${NC}"
         else
             echo -e "${RED}Failed to install $PACKAGE${NC}"
-            ((failed++))
+            failed_installs+=("$PACKAGE")
         fi
     done
     
-    if [[ $failed -gt 0 ]]; then
-        echo -e "${RED}Failed to install $failed package(s).${NC}"
-        return 1
-    else
-        echo -e "${GREEN}All packages installed successfully.${NC}"
-    fi
+    print_failed_summary "install" failed_installs
+    return 0
 }
 
 # Function to remove system packages
@@ -100,14 +109,14 @@ remove_packages() {
         return
     fi
     
-    local failed=0
+    local failed_removals=()
     for PACKAGE in "${REMOVE_PACKAGES[@]}"; do
         echo -e "${YELLOW}Removing $PACKAGE...${NC}"
         if sudo dnf remove -y "$PACKAGE"; then
             echo -e "${GREEN}Successfully removed $PACKAGE${NC}"
         else
             echo -e "${RED}Failed to remove $PACKAGE${NC}"
-            ((failed++))
+            failed_removals+=("$PACKAGE")
         fi
     done
     
@@ -115,39 +124,33 @@ remove_packages() {
     echo -e "${YELLOW}Cleaning up unused dependencies...${NC}"
     sudo dnf autoremove -y
     
-    if [[ $failed -gt 0 ]]; then
-        echo -e "${RED}Failed to remove $failed package(s).${NC}"
-        return 1
-    else
-        echo -e "${GREEN}Package removal complete.${NC}"
-    fi
+    print_failed_summary "remove" failed_removals
+    return 0
 }
 
 # Function to install Flatpak applications
 install_flatpaks() {
     print_header "INSTALLING FLATPAK PACKAGES"
-    local failed=0
+    local failed_flatpaks=()
+    
     for PACKAGE in "${FLATPAK_PACKAGES[@]}"; do
         echo -e "${YELLOW}Installing Flatpak package: $PACKAGE...${NC}"
         if flatpak install -y flathub "$PACKAGE"; then
             echo -e "${GREEN}Successfully installed $PACKAGE${NC}"
         else
             echo -e "${RED}Failed to install Flatpak package $PACKAGE${NC}"
-            ((failed++))
+            failed_flatpaks+=("$PACKAGE")
         fi
     done
     
-    if [[ $failed -gt 0 ]]; then
-        echo -e "${RED}Failed to install $failed Flatpak package(s).${NC}"
-        return 1
-    else
-        echo -e "${GREEN}Flatpak installation complete.${NC}"
-    fi
+    print_failed_summary "install" failed_flatpaks
+    return 0
 }
 
 # Function to install NVIDIA Graphics drivers
 install_nvidia() {
     print_header "INSTALLING NVIDIA GRAPHICS DRIVERS"
+    local failed_steps=()
     
     echo -e "${YELLOW}This will install NVIDIA drivers and related packages.${NC}"
     echo -e "${YELLOW}Are you sure you have an NVIDIA GPU? (y/n)${NC}"
@@ -159,46 +162,66 @@ install_nvidia() {
     
     # Install required packages
     echo -e "${YELLOW}Installing required dependencies...${NC}"
-    sudo dnf install -y kmodtool akmods mokutil openssl || {
-        echo -e "${RED}Failed to install required dependencies.${NC}"
-        return 1
-    }
+    if sudo dnf install -y kmodtool akmods mokutil openssl; then
+        echo -e "${GREEN}Dependencies installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install required dependencies${NC}"
+        failed_steps+=("Dependencies installation")
+    fi
     
     # Generate and import MOK (Machine Owner Key) for Secure Boot
     echo -e "${YELLOW}Generating and importing MOK for Secure Boot...${NC}"
-    sudo kmodgenca -a || {
-        echo -e "${RED}Failed to generate MOK.${NC}"
-        return 1
-    }
+    if sudo kmodgenca -a; then
+        echo -e "${GREEN}MOK generated successfully${NC}"
+    else
+        echo -e "${RED}Failed to generate MOK${NC}"
+        failed_steps+=("MOK generation")
+    fi
     
     echo -e "${YELLOW}Please enter your password to proceed with MOK enrollment...${NC}"
-    sudo mokutil --import /etc/pki/akmods/certs/public_key.der || {
-        echo -e "${RED}Failed to import MOK.${NC}"
-        return 1
-    }
+    if sudo mokutil --import /etc/pki/akmods/certs/public_key.der; then
+        echo -e "${GREEN}MOK imported successfully${NC}"
+    else
+        echo -e "${RED}Failed to import MOK${NC}"
+        failed_steps+=("MOK import")
+    fi
     
     # Install NVIDIA drivers and CUDA
     echo -e "${YELLOW}Installing NVIDIA drivers...${NC}"
-    sudo dnf install -y akmod-nvidia || {
-        echo -e "${RED}Failed to install NVIDIA drivers.${NC}"
-        return 1
-    }
+    if sudo dnf install -y akmod-nvidia; then
+        echo -e "${GREEN}NVIDIA drivers installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install NVIDIA drivers${NC}"
+        failed_steps+=("NVIDIA drivers installation")
+    fi
     
     echo -e "${YELLOW}Installing CUDA support...${NC}"
-    sudo dnf install -y xorg-x11-drv-nvidia-cuda || {
-        echo -e "${RED}Failed to install CUDA support.${NC}"
-        return 1
-    }
+    if sudo dnf install -y xorg-x11-drv-nvidia-cuda; then
+        echo -e "${GREEN}CUDA support installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install CUDA support${NC}"
+        failed_steps+=("CUDA support installation")
+    fi
     
     # Confirm NVIDIA driver version
     echo -e "${YELLOW}Verifying installation...${NC}"
     if modinfo -F version nvidia; then
-        echo -e "${GREEN}NVIDIA graphics installation complete.${NC}"
-        echo -e "${YELLOW}You may need to reboot for changes to take effect.${NC}"
+        echo -e "${GREEN}NVIDIA driver verification successful${NC}"
     else
-        echo -e "${RED}Failed to verify NVIDIA driver installation.${NC}"
-        return 1
+        echo -e "${RED}Failed to verify NVIDIA driver installation${NC}"
+        failed_steps+=("Driver verification")
     fi
+    
+    if [[ ${#failed_steps[@]} -gt 0 ]]; then
+        echo -e "${YELLOW}\nThe following steps failed during NVIDIA installation:${NC}"
+        printf '%s\n' "${failed_steps[@]}"
+        echo -e "${YELLOW}You may need to address these issues manually.${NC}"
+    else
+        echo -e "${GREEN}NVIDIA graphics installation complete.${NC}"
+    fi
+    
+    echo -e "${YELLOW}You may need to reboot for changes to take effect.${NC}"
+    return 0
 }
 
 # Function to install Brave browser
@@ -218,8 +241,8 @@ install_brave() {
         echo -e "${GREEN}Brave browser installation complete.${NC}"
     else
         echo -e "${RED}Failed to install Brave browser.${NC}"
-        return 1
     fi
+    return 0
 }
 
 # Main menu function
