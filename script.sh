@@ -38,24 +38,34 @@ fi
 # Package lists
 INSTALL_PACKAGES=("git" "curl")
 REMOVE_PACKAGES=(
-    "firefox" "baobab" "evince" "epiphany" "gnome-abrt" "ibus-anthy"
-    "gnome-calendar" "gnome-clocks" "gnome-color-manager" "ibus-hangul"
+    # GNOME applications
+    "firefox" "baobab" "evince" "epiphany" "gnome-abrt"
+    "gnome-calendar" "gnome-clocks" "gnome-color-manager"
     "gnome-connections" "gnome-console" "gnome-contacts"
-    "ibus-typing-booster" "ibus-libpinyin" "gnome-weather"
-    "gnome-logs" "gnome-maps" "gnome-music" "gnome-tour"
-    "gnome-remote-desktop" "gnome-shell-extensions" "totem"
-    "gnome-user-docs" "gnome-user-share" "yelp" "snapshot"
-    "malcontent-control" "orca" "simple-scan" "rhythmbox" "gnome-boxes"
-    "kontact" "Akregator" "mediawriter"
-    "libreoffice-core" "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
-    "kmahjongg" "kmines" "kpat" "kolourpaint"
-    "skanpage" "khelpcenter" "plasma-welcome"
-    "kdebugsettings" "kde-connect" "kmail" "krfb"
-    "krdc" "neochat" "dragon" "elisa-player" "kaddressbook"
-    "kamoso" "qrca" "korganizer" "kde-partitionmanager"
-    "kjournald" "im-chooser" "kmouth" "kcharselect"
-    "filelight" "kfind" "kgpg" "plasma-drkonqi"
-    "setroubleshoot" "podman"
+    "gnome-weather" "gnome-logs" "gnome-maps" "gnome-music"
+    "gnome-tour" "gnome-remote-desktop" "gnome-shell-extensions"
+    "gnome-user-docs" "gnome-user-share" "totem" "yelp"
+    "snapshot" "orca" "simple-scan" "rhythmbox" "gnome-boxes"
+
+    # Input methods
+    "ibus-anthy" "ibus-hangul" "ibus-typing-booster" "ibus-libpinyin"
+    "im-chooser"
+
+    # KDE applications
+    "kontact" "Akregator" "kmahjongg" "kmines" "kpat"
+    "kolourpaint" "skanpage" "khelpcenter" "plasma-welcome"
+    "kdebugsettings" "kde-connect" "kmail" "krfb" "krdc"
+    "neochat" "dragon" "elisa-player" "kaddressbook" "kamoso"
+    "qrca" "korganizer" "kde-partitionmanager" "kjournald"
+    "kmouth" "kcharselect" "filelight" "kfind" "kgpg"
+    "plasma-drkonqi"
+
+    # Office suite
+    "libreoffice-core" "libreoffice-writer" "libreoffice-draw"
+    "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
+
+    # Other utilities
+    "mediawriter" "malcontent-control" "setroubleshoot" "podman"
 )
 FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager")
 
