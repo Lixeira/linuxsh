@@ -45,7 +45,7 @@ REMOVE_PACKAGES=(
     "gnome-logs" "gnome-maps" "gnome-music" "gnome-tour"
     "gnome-remote-desktop" "gnome-shell-extensions" "totem"
     "gnome-user-docs" "gnome-user-share" "yelp" "snapshot"
-    "malcontent" "orca" "simple-scan" "rhythmbox" "gnome-boxes"
+    "malcontent-control" "orca" "simple-scan" "rhythmbox" "gnome-boxes"
     "kontact" "Akregator" "mediawriter"
     "libreoffice-core" "libreoffice-writer" "libreoffice-draw" "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
     "kmahjongg" "kmines" "kpat" "kolourpaint"
