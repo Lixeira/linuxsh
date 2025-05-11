@@ -269,7 +269,7 @@ install_rpmfusion() {
 
     # Enable Cisco OpenH264
     echo -e "${YELLOW}Enabling Cisco OpenH264...${NC}"
-    if sudo dnf config-manager --set-enabled fedora-cisco-openh264; then
+    if sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1; then
         echo -e "${GREEN}Cisco OpenH264 enabled successfully${NC}"
     else
         echo -e "${RED}Failed to enable Cisco OpenH264${NC}"
