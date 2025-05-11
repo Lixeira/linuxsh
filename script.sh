@@ -245,6 +245,93 @@ install_brave() {
     return 0
 }
 
+# Function to install RPM Fusion repositories
+install_rpmfusion() {
+    print_header "INSTALLING RPM FUSION REPOSITORIES"
+    local failed_steps=()
+
+    echo -e "${YELLOW}This will install RPM Fusion free and non-free repositories.${NC}"
+    echo -e "${YELLOW}Do you want to continue? (y/n)${NC}"
+    read -r answer
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}RPM Fusion installation cancelled.${NC}"
+        return
+    fi
+
+    # Install RPM Fusion repositories
+    echo -e "${YELLOW}Installing RPM Fusion repositories...${NC}"
+    if sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm; then
+        echo -e "${GREEN}RPM Fusion repositories installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install RPM Fusion repositories${NC}"
+        failed_steps+=("RPM Fusion repositories installation")
+    fi
+
+    # Enable Cisco OpenH264
+    echo -e "${YELLOW}Enabling Cisco OpenH264...${NC}"
+    if sudo dnf config-manager --set-enabled fedora-cisco-openh264; then
+        echo -e "${GREEN}Cisco OpenH264 enabled successfully${NC}"
+    else
+        echo -e "${RED}Failed to enable Cisco OpenH264${NC}"
+        failed_steps+=("Cisco OpenH264 enablement")
+    fi
+
+    # Update core packages
+    echo -e "${YELLOW}Updating core packages...${NC}"
+    if sudo dnf update -y @core; then
+        echo -e "${GREEN}Core packages updated successfully${NC}"
+    else
+        echo -e "${RED}Failed to update core packages${NC}"
+        failed_steps+=("Core packages update")
+    fi
+
+    # Install AppStream data
+    echo -e "${YELLOW}Installing AppStream data...${NC}"
+    if sudo dnf install -y rpmfusion-\*-appstream-data; then
+        echo -e "${GREEN}AppStream data installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install AppStream data${NC}"
+        failed_steps+=("AppStream data installation")
+    fi
+
+    # Swap ffmpeg versions
+    echo -e "${YELLOW}Swapping ffmpeg versions...${NC}"
+    if sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing; then
+        echo -e "${GREEN}ffmpeg swapped successfully${NC}"
+    else
+        echo -e "${RED}Failed to swap ffmpeg${NC}"
+        failed_steps+=("ffmpeg swap")
+    fi
+
+    # Update multimedia packages
+    echo -e "${YELLOW}Updating multimedia packages...${NC}"
+    if sudo dnf update -y @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin; then
+        echo -e "${GREEN}Multimedia packages updated successfully${NC}"
+    else
+        echo -e "${RED}Failed to update multimedia packages${NC}"
+        failed_steps+=("Multimedia packages update")
+    fi
+
+    # Install NVIDIA VAAPI driver
+    echo -e "${YELLOW}Installing NVIDIA VAAPI driver...${NC}"
+    if sudo dnf install -y libva-nvidia-driver.{i686,x86_64}; then
+        echo -e "${GREEN}NVIDIA VAAPI driver installed successfully${NC}"
+    else
+        echo -e "${RED}Failed to install NVIDIA VAAPI driver${NC}"
+        failed_steps+=("NVIDIA VAAPI driver installation")
+    fi
+
+    if [[ ${#failed_steps[@]} -gt 0 ]]; then
+        echo -e "${YELLOW}\nThe following steps failed during RPM Fusion setup:${NC}"
+        printf '%s\n' "${failed_steps[@]}"
+        echo -e "${YELLOW}You may need to address these issues manually.${NC}"
+    else
+        echo -e "${GREEN}RPM Fusion setup complete.${NC}"
+    fi
+
+    return 0
+}
+
 # Main menu function
 main_menu() {
     while true; do
@@ -254,9 +341,10 @@ main_menu() {
         echo "3. Install Flatpak packages"
         echo "4. Install NVIDIA graphics drivers"
         echo "5. Install Brave browser"
-        echo "6. Exit"
+        echo "6. Install RPM Fusion repositories"
+        echo "7. Exit"
         
-        read -rp "Enter your choice (1-6): " CHOICE
+        read -rp "Enter your choice (1-7): " CHOICE
         
         case $CHOICE in
             1) install_packages ;;
@@ -264,7 +352,8 @@ main_menu() {
             3) install_flatpaks ;;
             4) install_nvidia ;;
             5) install_brave ;;
-            6)
+            6) install_rpmfusion ;;
+            7)
                 echo -e "${GREEN}Exiting script. Goodbye!${NC}"
                 exit 0
                 ;;
