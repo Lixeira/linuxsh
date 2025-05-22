@@ -65,7 +65,7 @@ REMOVE_PACKAGES=(
     "libreoffice-calc" "libreoffice-impress" "libreoffice-math"
 
     # Other utilities
-    "mediawriter" "malcontent-control" "setroubleshoot" "podman"
+    "mediawriter" "malcontent-control" "setroubleshoot"
 )
 FLATPAK_PACKAGES=("com.mattjakeman.ExtensionManager")
 
